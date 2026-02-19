@@ -1,2 +1,5 @@
 flask>=3.0.0
 opengradient>=0.7.0
+web3>=6.0.0
+python-dotenv>=1.0.0
+flask-cors>=4.0.0
