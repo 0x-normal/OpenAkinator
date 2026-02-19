@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKINATOR — OpenGradient Oracle</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --ink: #08060a;
+      --void: #0d0a10;
+      --deep: #130f18;
+      --surface: #1c1724;
+      --lift: #261f30;
+      --border: #342840;
+      --accent: #e8b86d;
+      --accent2: #c47fd4;
+      --accent3: #6dcfe8;
+      --text: #f0e8f8;
+      --muted: #8a7a9a;
+      --dim: #4a3a5a;
+      --red: #e84d6d;
+      --green: #6de8a0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      width: 100%
+    }
+
+    body {
+      background: var(--void);
+      color: var(--text);
+      font-family: 'Cormorant Garamond', serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    /* ── AMBIENT LIGHT ── */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(196, 127, 212, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 80% 90%, rgba(109, 207, 232, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(232, 184, 109, 0.04) 0%, transparent 70%);
+    }
+
+    /* ── FLOATING PARTICLES ── */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      animation: drift linear infinite;
+      opacity: 0;
+    }
+
+    @keyframes drift {
+      0% {
+        transform: translateY(100vh) translateX(0) rotate(0deg);
+        opacity: 0
+      }
+
+      10% {
+        opacity: 1
+      }
+
+      90% {
+        opacity: 0.6
+      }
+
+      100% {
+        transform: translateY(-10vh) translateX(var(--dx, 20px)) rotate(360deg);
+        opacity: 0
+      }
+    }
+
+    /* ── LAYOUT ── */
+    .wrap {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: riseIn 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.35em;
+      color: var(--accent2);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+      opacity: 0.8;
+    }
+
+    .title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(3.5rem, 9vw, 6.5rem);
+      font-weight: 900;
+      font-style: italic;
+      line-height: 0.9;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #f5e6c0 0%, var(--accent) 40%, #d4956a 70%, #f0d090 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(232, 184, 109, 0.3));
+      margin-bottom: 0.6rem;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--muted);
+      font-style: italic;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── CARD ── */
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: linear-gradient(145deg, var(--deep) 0%, var(--surface) 100%);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      box-shadow:
+        0 0 0 1px rgba(232, 184, 109, 0.06),
+        0 2px 4px rgba(0, 0, 0, 0.4),
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+      animation: riseIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+      position: relative;
+    }
+
+    /* decorative top bar */
+    .card::before {
+      content: '';
+      display: block;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent2), var(--accent), var(--accent2), transparent);
+    }
+
+    .card-inner {
+      padding: 2.2rem 2.5rem 2.5rem
+    }
+
+    /* ── ORACLE SPHERE ── */
+    .oracle-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2rem
+    }
+
+    .oracle {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      animation: levitate 5s ease-in-out infinite;
+    }
+
+    @keyframes levitate {
+
+      0%,
+      100% {
+        transform: translateY(0)
+      }
+
+      50% {
+        transform: translateY(-8px)
+      }
+    }
+
+    .orb {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, rgba(232, 184, 109, 0.3), rgba(196, 127, 212, 0.2), var(--ink));
+      border: 1px solid rgba(232, 184, 109, 0.2);
+      box-shadow:
+        0 0 20px rgba(232, 184, 109, 0.15),
+        0 0 60px rgba(196, 127, 212, 0.1),
+        inset 0 0 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      animation: glow 3s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 20px rgba(232, 184, 109, 0.15), 0 0 60px rgba(196, 127, 212, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5)
+      }
+
+      50% {
+        box-shadow: 0 0 35px rgba(232, 184, 109, 0.3), 0 0 80px rgba(196, 127, 212, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.3)
+      }
+    }
+
+    .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(232, 184, 109, 0.15);
+      animation: spin-ring var(--spd, 8s) linear infinite var(--rev, normal);
+    }
+
+    .ring::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .ring:nth-child(1) {
+      inset: -10px;
+      --spd: 8s;
+      --rev: normal
+    }
+
+    .ring:nth-child(2) {
+      inset: -20px;
+      --spd: 12s;
+      --rev: reverse;
+      border-color: rgba(196, 127, 212, 0.12)
+    }
+
+    .ring:nth-child(2)::after {
+      background: var(--accent2);
+      box-shadow: 0 0 8px var(--accent2)
+    }
+
+    .ring:nth-child(3) {
+      inset: -32px;
+      --spd: 20s;
+      --rev: normal;
+      border-color: rgba(109, 207, 232, 0.1)
+    }
+
+    .ring:nth-child(3)::after {
+      background: var(--accent3);
+      box-shadow: 0 0 8px var(--accent3)
+    }
+
+    /* ── SECTION LABELS ── */
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.4em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    /* ── CATEGORY GRID ── */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .cat-btn {
+      all: unset;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.75rem 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: var(--deep);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cat-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(232, 184, 109, 0.08), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .cat-btn:hover {
+      border-color: var(--dim);
+      color: var(--text)
+    }
+
+    .cat-btn:hover::before {
+      opacity: 1
+    }
+
+    .cat-btn.selected {
+      border-color: rgba(232, 184, 109, 0.5);
+      background: rgba(232, 184, 109, 0.06);
+      color: var(--accent);
+      box-shadow: 0 0 20px rgba(232, 184, 109, 0.08), inset 0 0 15px rgba(232, 184, 109, 0.04);
+    }
+
+    .cat-btn.selected::before {
+      opacity: 1
+    }
+
+    .cat-icon {
+      font-size: 1.3rem;
+      display: block
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 1.5rem 0;
+    }
+
+    /* ── BUTTON ── */
+    .btn-start {
+      all: unset;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      text-align: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      font-style: italic;
+      letter-spacing: 0.1em;
+      color: var(--ink);
+      background: linear-gradient(135deg, #f0d090, var(--accent), #d4956a);
+      border-radius: 2px;
+      box-shadow: 0 4px 20px rgba(232, 184, 109, 0.3), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-start::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn-start:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 30px rgba(232, 184, 109, 0.4), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    }
+
+    .btn-start:hover:not(:disabled)::before {
+      opacity: 1
+    }
+
+    .btn-start:disabled {
+      opacity: 0.35;
+      cursor: not-allowed
+    }
+
+    .btn-start:active:not(:disabled) {
+      transform: translateY(0)
+    }
+
+    /* ── GAME SCREEN ── */
+    #game-screen {
+      display: none
+    }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap {
+      margin-bottom: 2rem
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+
+    .q-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.52rem;
+      letter-spacing: 0.3em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .confidence-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.52rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+    }
+
+    .progress-track {
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 1px;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 8px rgba(232, 184, 109, 0.5);
+    }
+
+    /* ── QUESTION DISPLAY ── */
+    .question-area {
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .question-text {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.2rem, 3vw, 1.6rem);
+      font-style: italic;
+      text-align: center;
+      line-height: 1.4;
+      color: var(--text);
+      animation: fadeQuestion 0.5s ease both;
+    }
+
+    @keyframes fadeQuestion {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* thinking state */
+    .thinking {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .thinking-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+
+    .thinking-dot:nth-child(2) {
+      animation-delay: 0.15s;
+      background: var(--accent2)
+    }
+
+    .thinking-dot:nth-child(3) {
+      animation-delay: 0.3s;
+      background: var(--accent3)
+    }
+
+    @keyframes bounce {
+
+      0%,
+      60%,
+      100% {
+        transform: translateY(0);
+        opacity: 0.4
+      }
+
+      30% {
+        transform: translateY(-8px);
+        opacity: 1
+      }
+    }
+
+    /* ── ANSWER GRID ── */
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .ans-btn {
+      all: unset;
+      cursor: pointer;
+      padding: 0.7rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      background: var(--deep);
+      transition: all 0.18s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ans-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .ans-btn:hover:not(:disabled) {
+      border-color: rgba(232, 184, 109, 0.4);
+      color: var(--accent);
+      background: rgba(232, 184, 109, 0.04);
+      transform: translateY(-1px);
+    }
+
+    .ans-btn:active:not(:disabled) {
+      transform: translateY(0)
+    }
+
+    .ans-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed
+    }
+
+    /* ── HISTORY ── */
+    .history-wrap {
+      max-height: 120px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--dim) transparent;
+    }
+
+    .history-wrap::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .history-wrap::-webkit-scrollbar-thumb {
+      background: var(--dim);
+      border-radius: 2px
+    }
+
+    .history-item {
+      display: flex;
+      gap: 0.8rem;
+      align-items: flex-start;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid rgba(52, 40, 64, 0.4);
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .history-item:last-child {
+      border-bottom: none
+    }
+
+    .history-q {
+      flex: 1;
+      font-style: italic;
+      color: var(--dim)
+    }
+
+    .history-a {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      white-space: nowrap;
+      padding: 0.15rem 0.4rem;
+      border: 1px solid rgba(232, 184, 109, 0.2);
+      border-radius: 1px;
+    }
+
+    /* ── FOOTER ACTIONS ── */
+    .game-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.2rem;
+    }
+
+    .btn-ghost {
+      all: unset;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.25em;
+      color: var(--dim);
+      text-transform: uppercase;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 1px;
+      transition: all 0.2s;
+    }
+
+    .btn-ghost:hover {
+      color: var(--muted);
+      border-color: var(--dim)
+    }
+
+    .tx-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.45rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tx-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green)
+    }
+
+    .tx-link {
+      color: var(--dim);
+      text-decoration: none;
+      transition: color 0.2s
+    }
+
+    .tx-link:hover {
+      color: var(--accent)
+    }
+
+    /* ── GUESS SCREEN ── */
+    #guess-screen {
+      display: none
+    }
+
+    .guess-reveal {
+      text-align: center;
+      animation: riseIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .guess-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.4em;
+      color: var(--accent2);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+
+    .guess-name {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 0.7rem;
+      line-height: 1.1;
+    }
+
+    .guess-desc {
+      font-size: 1rem;
+      color: var(--muted);
+      font-style: italic;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+      max-width: 380px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .confidence-ring {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      position: relative;
+    }
+
+    .confidence-ring svg {
+      transform: rotate(-90deg)
+    }
+
+    .conf-track {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 3
+    }
+
+    .conf-fill {
+      fill: none;
+      stroke: url(#confGrad);
+      stroke-width: 3;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+      stroke-linecap: round;
+    }
+
+    .conf-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .conf-pct {
+      font-size: 1rem;
+      color: var(--accent);
+      line-height: 1
+    }
+
+    .conf-lbl {
+      font-size: 0.4rem;
+      color: var(--dim);
+      letter-spacing: 0.2em;
+      text-transform: uppercase
+    }
+
+    .guess-btns {
+      display: flex;
+      gap: 0.7rem;
+      justify-content: center
+    }
+
+    .btn-correct {
+      all: unset;
+      cursor: pointer;
+      padding: 0.75rem 1.8rem;
+      background: rgba(109, 232, 160, 0.1);
+      border: 1px solid rgba(109, 232, 160, 0.3);
+      border-radius: 2px;
+      color: var(--green);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .btn-correct:hover {
+      background: rgba(109, 232, 160, 0.15);
+      border-color: rgba(109, 232, 160, 0.5)
+    }
+
+    .btn-wrong {
+      all: unset;
+      cursor: pointer;
+      padding: 0.75rem 1.8rem;
+      background: rgba(232, 77, 109, 0.08);
+      border: 1px solid rgba(232, 77, 109, 0.25);
+      border-radius: 2px;
+      color: var(--red);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .btn-wrong:hover {
+      background: rgba(232, 77, 109, 0.12);
+      border-color: rgba(232, 77, 109, 0.4)
+    }
+
+    /* ── WIN / LOSE SCREENS ── */
+    .result-screen {
+      text-align: center;
+      animation: riseIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .result-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both
+    }
+
+    @keyframes popIn {
+      from {
+        transform: scale(0);
+        opacity: 0
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1
+      }
+    }
+
+    .result-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 900;
+      font-style: italic;
+      margin-bottom: 0.5rem;
+    }
+
+    .result-sub {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 1rem;
+      margin-bottom: 2rem
+    }
+
+    /* ── ERROR BOX ── */
+    .error-box {
+      background: rgba(232, 77, 109, 0.08);
+      border: 1px solid rgba(232, 77, 109, 0.2);
+      border-radius: 2px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 1rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.58rem;
+      line-height: 1.6;
+      letter-spacing: 0.05em;
+      color: rgba(232, 77, 109, 0.9);
+    }
+
+    .error-box a {
+      color: var(--accent)
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes riseIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes fadeDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ── SCREEN TRANSITIONS ── */
+    .screen {
+      transition: opacity 0.3s, transform 0.3s
+    }
+
+    .screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="ambient"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="wrap">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="eyebrow">OpenGradient · TEE Verified · On-Chain</div>
+      <h1 class="title">Akinator</h1>
+      <div class="subtitle">The oracle reads your mind</div>
+    </div>
+
+    <!-- CARD -->
+    <div class="card">
+      <div class="card-inner">
+
+        <!-- ═══ START SCREEN ═══ -->
+        <div id="start-screen">
+          <div class="oracle-wrap">
+            <div class="oracle">
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <div class="orb">🔮</div>
+            </div>
+          </div>
+
+          <div class="section-label">Think of something</div>
+          <div class="cat-grid">
+            <button class="cat-btn" data-cat="famous person" onclick="selectCat(this)">
+              <span class="cat-icon">👤</span>Person
+            </button>
+            <button class="cat-btn" data-cat="animal" onclick="selectCat(this)">
+              <span class="cat-icon">🦁</span>Animal
+            </button>
+            <button class="cat-btn" data-cat="movie or TV show" onclick="selectCat(this)">
+              <span class="cat-icon">🎬</span>Movie
+            </button>
+            <button class="cat-btn" data-cat="object or thing" onclick="selectCat(this)">
+              <span class="cat-icon">🎯</span>Object
+            </button>
+          </div>
+
+          <div id="error-area"></div>
+
+          <button class="btn-start" id="start-btn" onclick="startGame()" disabled>
+            ✦ &nbsp;Begin the Ritual&nbsp; ✦
+          </button>
+        </div>
+
+        <!-- ═══ GAME SCREEN ═══ -->
+        <div id="game-screen">
+
+          <!-- Progress -->
+          <div class="progress-wrap">
+            <div class="progress-meta">
+              <span class="q-label">Question <span id="q-num">1</span></span>
+              <span class="confidence-val"><span id="conf-pct">0</span>% confident</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="prog-fill"></div>
+            </div>
+          </div>
+
+          <!-- Question -->
+          <div class="question-area">
+            <div id="question-display" class="question-text"></div>
+          </div>
+
+          <!-- Error -->
+          <div id="game-error"></div>
+
+          <!-- Answers -->
+          <div class="answer-grid">
+            <button class="ans-btn" onclick="answer('Yes')">Yes</button>
+            <button class="ans-btn" onclick="answer('No')">No</button>
+            <button class="ans-btn" onclick="answer('Maybe')">Maybe</button>
+            <button class="ans-btn" onclick="answer('Probably Yes')">Prob. Yes</button>
+            <button class="ans-btn" onclick="answer('Probably No')">Prob. No</button>
+            <button class="ans-btn" onclick="answer('I don\'t know')">Don't Know</button>
+          </div>
+
+          <!-- History -->
+          <div class="history-wrap" id="history-list"></div>
+
+          <!-- Footer -->
+          <div class="game-footer">
+            <button class="btn-ghost" onclick="resetGame()">↺ &nbsp;Reset</button>
+            <div class="tx-badge" id="tx-area" style="display:none">
+              <span class="tx-dot"></span>
+              <a class="tx-link" id="tx-link" target="_blank" href="#">on-chain ↗</a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ═══ GUESS SCREEN ═══ -->
+        <div id="guess-screen">
+          <div class="guess-reveal">
+
+            <div class="guess-label">The oracle sees…</div>
+
+            <div class="confidence-ring">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <defs>
+                  <linearGradient id="confGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#c47fd4" />
+                    <stop offset="100%" style="stop-color:#e8b86d" />
+                  </linearGradient>
+                </defs>
+                <circle class="conf-track" cx="40" cy="40" r="35" />
+                <circle class="conf-fill" id="conf-circle" cx="40" cy="40" r="35" />
+              </svg>
+              <div class="conf-text">
+                <span class="conf-pct" id="guess-conf-pct">0%</span>
+                <span class="conf-lbl">sure</span>
+              </div>
+            </div>
+
+            <div class="guess-name" id="guess-name"></div>
+            <div class="guess-desc" id="guess-desc"></div>
+
+            <div id="guess-error"></div>
+
+            <div class="guess-btns">
+              <button class="btn-correct" onclick="showResult(true)">✓ &nbsp;Correct!</button>
+              <button class="btn-wrong" onclick="showResult(false)">✗ &nbsp;Wrong</button>
+            </div>
+
+            <div class="game-footer" style="margin-top:1.5rem">
+              <button class="btn-ghost" onclick="resetGame()">↺ &nbsp;Start Over</button>
+              <div class="tx-badge" id="guess-tx-area" style="display:none">
+                <span class="tx-dot"></span>
+                <a class="tx-link" id="guess-tx-link" target="_blank" href="#">on-chain ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ RESULT SCREEN ═══ -->
+        <div id="result-screen" style="display:none">
+          <div class="result-screen">
+            <div class="result-icon" id="result-icon"></div>
+            <div class="result-title" id="result-title"></div>
+            <div class="result-sub" id="result-sub"></div>
+            <button class="btn-start" onclick="resetGame()">✦ &nbsp;Play Again&nbsp; ✦</button>
+          </div>
+        </div>
+
+      </div><!-- /card-inner -->
+    </div><!-- /card -->
+
+  </div><!-- /wrap -->
+
+  <script>
+    // ── PARTICLES ──────────────────────────────────────────────────────────────
+    (function () {
+      const c = document.getElementById('particles');
+      const colors = ['rgba(232,184,109,', 'rgba(196,127,212,', 'rgba(109,207,232,'];
+      for (let i = 0; i < 25; i++) {
+        const d = document.createElement('div');
+        d.className = 'particle';
+        const sz = Math.random() * 3 + 1;
+        const col = colors[Math.floor(Math.random() * colors.length)];
+        const op = Math.random() * 0.3 + 0.1;
+        d.style.cssText = `
+      width:${sz}px;height:${sz}px;
+      left:${Math.random() * 100}%;
+      background:${col}${op});
+      --dx:${(Math.random() - 0.5) * 100}px;
+      animation-duration:${Math.random() * 20 + 15}s;
+      animation-delay:${Math.random() * 15}s;
+      ${sz > 3 ? 'box-shadow:0 0 4px ' + col + '0.6)' : ''}
+    `;
+        c.appendChild(d);
+      }
+    })();
+
+    // ── STATE ──────────────────────────────────────────────────────────────────
+    const BACKEND = 'http://localhost:5000';
+    let category = '', history = [], questionNum = 0, busy = false, lastQ = '';
+
+    // ── SCREENS ────────────────────────────────────────────────────────────────
+    function show(id) {
+      ['start-screen', 'game-screen', 'guess-screen', 'result-screen'].forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.style.display = s === id ? 'block' : 'none';
+      });
+    }
+
+    // ── CATEGORY SELECT ────────────────────────────────────────────────────────
+    function selectCat(el) {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      category = el.dataset.cat;
+      document.getElementById('start-btn').disabled = false;
+    }
+
+    // ── START GAME ─────────────────────────────────────────────────────────────
+    function startGame() {
+      history = []; questionNum = 0; lastQ = '';
+      document.getElementById('history-list').innerHTML = '';
+      document.getElementById('game-error').innerHTML = '';
+      document.getElementById('tx-area').style.display = 'none';
+      show('game-screen');
+      setThinking(true);
+      callBackend();
+    }
+
+    // ── ANSWER ─────────────────────────────────────────────────────────────────
+    function answer(ans) {
+      if (busy) return;
+      history.push({ role: 'assistant', content: lastQ });
+      history.push({ role: 'user', content: ans });
+      addHistoryItem(lastQ, ans);
+      setThinking(true);
+      callBackend();
+    }
+
+    // ── BACKEND CALL ───────────────────────────────────────────────────────────
+    async function callBackend() {
+      if (busy) return;
+      busy = true;
+      setAnswerBtns(false);
+      document.getElementById('game-error').innerHTML = '';
+
+      let res;
+      try {
+        res = await fetch(BACKEND + '/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category, history, question_num: questionNum + 1 })
+        });
+      } catch (e) {
+        showGameErr('Cannot reach Flask server — is app.py running? (' + e.message + ')');
+        busy = false; return;
+      }
+
+      let data;
+      try {
+        const txt = await res.text();
+        data = JSON.parse(txt);
+      } catch (e) {
+        showGameErr('Bad response from server');
+        busy = false; return;
+      }
+
+      if (!data.success) {
+        const msg = (data.error || 'Unknown error').replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+        showGameErr(msg);
+        busy = false; return;
+      }
+
+      const r = data.response;
+      const txHash = data.payment_hash;
+      questionNum++;
+
+      // Update tx badge
+      if (txHash) {
+        const area = document.getElementById('tx-area');
+        const lnk = document.getElementById('tx-link');
+        area.style.display = 'flex';
+        lnk.href = 'https://explorer.opengradient.ai/tx/' + txHash;
+        lnk.textContent = txHash.slice(0, 6) + '…' + txHash.slice(-4) + ' ↗';
+      }
+
+      setThinking(false);
+      busy = false;
+
+      if (r.type === 'question') {
+        lastQ = r.text;
+        showQuestion(r.text, r.confidence || 0);
+      } else if (r.type === 'guess') {
+        showGuess(r, txHash);
+      } else {
+        // fallback: treat as question
+        lastQ = r.text || JSON.stringify(r);
+        showQuestion(lastQ, 0);
+      }
+    }
+
+    // ── UI HELPERS ─────────────────────────────────────────────────────────────
+    function showQuestion(text, conf) {
+      const el = document.getElementById('question-display');
+      el.style.animation = 'none';
+      el.offsetHeight; // reflow
+      el.style.animation = '';
+      el.innerHTML = `<span class="question-text">"${text}"</span>`;
+
+      document.getElementById('q-num').textContent = questionNum;
+      document.getElementById('conf-pct').textContent = conf;
+      document.getElementById('prog-fill').style.width = conf + '%';
+      setAnswerBtns(true);
+    }
+
+    function setThinking(on) {
+      const el = document.getElementById('question-display');
+      if (on) {
+        el.innerHTML = `<div class="thinking">
+      <div class="thinking-dot"></div>
+      <div class="thinking-dot"></div>
+      <div class="thinking-dot"></div>
+    </div>`;
+        setAnswerBtns(false);
+      }
+    }
+
+    function setAnswerBtns(enabled) {
+      document.querySelectorAll('.ans-btn').forEach(b => b.disabled = !enabled);
+    }
+
+    function addHistoryItem(q, a) {
+      const list = document.getElementById('history-list');
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `<span class="history-q">${q}</span><span class="history-a">${a}</span>`;
+      list.appendChild(item);
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function showGameErr(msg) {
+      setThinking(false);
+      setAnswerBtns(true);
+      document.getElementById('game-error').innerHTML = `<div class="error-box">${msg}</div>`;
+    }
+
+    // ── GUESS SCREEN ───────────────────────────────────────────────────────────
+    function showGuess(g, txHash) {
+      show('guess-screen');
+      document.getElementById('guess-name').textContent = g.name || 'Something…';
+      document.getElementById('guess-desc').textContent = g.description || '';
+      const conf = Math.min(100, Math.max(0, g.confidence || 70));
+      document.getElementById('guess-conf-pct').textContent = conf + '%';
+
+      // Animate circle: circumference = 2π×35 ≈ 220
+      setTimeout(() => {
+        const circ = 220;
+        document.getElementById('conf-circle').style.strokeDashoffset = circ - (circ * conf / 100);
+      }, 100);
+
+      if (txHash) {
+        const area = document.getElementById('guess-tx-area');
+        const lnk = document.getElementById('guess-tx-link');
+        area.style.display = 'flex';
+        lnk.href = 'https://explorer.opengradient.ai/tx/' + txHash;
+        lnk.textContent = txHash.slice(0, 6) + '…' + txHash.slice(-4) + ' ↗';
+      }
+    }
+
+    // ── RESULT ─────────────────────────────────────────────────────────────────
+    function showResult(correct) {
+      show('result-screen');
+      if (correct) {
+        document.getElementById('result-icon').textContent = '🔮';
+        document.getElementById('result-title').textContent = 'I knew it!';
+        document.getElementById('result-sub').innerHTML = `The oracle read your mind in <em>${questionNum} questions</em>.`;
+        document.getElementById('result-title').style.color = 'var(--accent)';
+      } else {
+        document.getElementById('result-icon').textContent = '🌑';
+        document.getElementById('result-title').textContent = 'You bested me.';
+        document.getElementById('result-sub').innerHTML = `The oracle was wrong — <em>this time</em>.`;
+        document.getElementById('result-title').style.color = 'var(--accent2)';
+      }
+    }
+
+    // ── RESET ──────────────────────────────────────────────────────────────────
+    function resetGame() {
+      history = []; questionNum = 0; lastQ = ''; busy = false; category = '';
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('start-btn').disabled = true;
+      document.getElementById('error-area').innerHTML = '';
+      document.getElementById('conf-circle').style.strokeDashoffset = 220;
+      show('start-screen');
+    }
+  </script>
+</body>
+
+</html>
