@@ -17,7 +17,7 @@ from web3 import Web3
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
-PRIVATE_KEY = os.getenv('OG_PRIVATE_KEY')
+PRIVATE_KEY = os.environ.get("OG_PRIVATE_KEY") or "PASTE_YOUR_KEY_HERE"
 w3b   = Web3(Web3.HTTPProvider("https://sepolia.base.org"))
 acct  = w3b.eth.account.from_key(PRIVATE_KEY)
 WALLET = acct.address
@@ -178,4 +178,5 @@ def ask():
         return jsonify({"success":False,"error":msg}), 500
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)
