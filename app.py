@@ -1,11 +1,14 @@
 """
 Akinator Game — Powered by OpenGradient SDK
-Requires: pip install opengradient --upgrade
 """
 import os, json, threading
-from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env file locally if present (ignored on Railway/Render where env vars are set directly)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import opengradient as og
