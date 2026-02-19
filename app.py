@@ -17,7 +17,7 @@ from web3 import Web3
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
-PRIVATE_KEY = os.environ.get("OG_PRIVATE_KEY") or "PASTE_YOUR_KEY_HERE"
+PRIVATE_KEY = os.environ.get("OG_PRIVATE_KEY")
 w3b   = Web3(Web3.HTTPProvider("https://sepolia.base.org"))
 acct  = w3b.eth.account.from_key(PRIVATE_KEY)
 WALLET = acct.address
