@@ -1,6 +1,7 @@
 """
 Akinator Game — Powered by OpenGradient SDK
 """
+import time
 import os, json, threading
 
 # Load .env file locally if present (ignored on Railway/Render where env vars are set directly)
@@ -155,7 +156,8 @@ def ask():
     messages = [{"role":"system","content":SYSTEM_PROMPT.format(category=category)}] + clean
     print(f"[OG] → {ACTIVE_MODEL_NAME} q#{question_num}")
     try:
-        result = run_in_thread(lambda: client.llm.chat(
+        result = run_in_thread(lambda: llm_chat_with_retry(
+    lambda: client.llm.chat(
             model=ACTIVE_MODEL, messages=messages,
             max_tokens=300, temperature=0.3,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
@@ -176,6 +178,28 @@ def ask():
         msg = str(e)
         print(f"[OG] ERROR: {msg}")
         return jsonify({"success":False,"error":msg}), 500
+
+def llm_chat_with_retry(fn, retries=3, delay=1.5):
+    last_error = None
+
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as e:
+            last_error = e
+            msg = str(e)
+
+            # Only retry for this specific error (optional but cleaner)
+            if "TEE LLM chat request failed" in msg or "Invalid response" in msg:
+                print(f"[Retry {attempt+1}/{retries}] LLM error: {msg}")
+                time.sleep(delay * (attempt + 1))  # exponential-ish backoff
+                continue
+            else:
+                # Unknown error → don't retry
+                raise e
+
+    raise last_error
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
