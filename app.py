@@ -161,6 +161,7 @@ def ask():
             model=ACTIVE_MODEL, messages=messages,
             max_tokens=300, temperature=0.3,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
+        )
         ))
         raw   = (result.chat_output or {}).get("content","") or ""
         phash = getattr(result,"payment_hash",None)
