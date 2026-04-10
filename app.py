@@ -138,7 +138,7 @@ def ask():
         print(f"[OG] ERROR: {msg}")
         return jsonify({"success":False,"error":msg}), 500
 
-def llm_chat_with_retry(fn, retries=3, delay=1.5):
+def llm_chat_with_retry(fn, retries=5, delay=2.0):
     last_error = None
 
     for attempt in range(retries):
