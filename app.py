@@ -132,7 +132,7 @@ def ask():
                 messages=messages,
                 max_tokens=300,
                 temperature=0.3,
-                x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+                x402_settlement_mode=og.x402SettlementMode.PRIVATE
             ))
         ))
 
