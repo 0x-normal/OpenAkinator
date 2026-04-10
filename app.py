@@ -78,10 +78,10 @@ except Exception as e:
 # Test models
 MODEL_PRIORITY = [
     ("CLAUDE_SONNET_4_6", og.TEE_LLM.CLAUDE_SONNET_4_6),
-    ("CLAUDE_3_5_HAIKU",  og.TEE_LLM.CLAUDE_3_5_HAIKU),
-    ("GPT_4O",            og.TEE_LLM.GPT_4O),
-    ("GEMINI_2_0_FLASH",  og.TEE_LLM.GEMINI_2_0_FLASH),
-    ("GROK_3_MINI_BETA",  og.TEE_LLM.GROK_3_MINI_BETA),
+    ("CLAUDE_HAIKU_4_5",  og.TEE_LLM.CLAUDE_HAIKU_4_5),
+    ("GPT_5",             og.TEE_LLM.GPT_5),
+    ("GEMINI_2_5_FLASH",  og.TEE_LLM.GEMINI_2_5_FLASH),
+    ("GROK_4",            og.TEE_LLM.GROK_4),
 ]
 ACTIVE_MODEL = ACTIVE_MODEL_NAME = None
 print(f"\n  Testing models...")
@@ -107,8 +107,8 @@ for name, model in MODEL_PRIORITY:
         print(f"✗  {str(e)[:80]}")
 
 if not ACTIVE_MODEL:
-    ACTIVE_MODEL = og.TEE_LLM.CLAUDE_3_5_HAIKU
-    ACTIVE_MODEL_NAME = "CLAUDE_3_5_HAIKU (fallback)"
+    ACTIVE_MODEL = og.TEE_LLM.CLAUDE_SONNET_4_6
+    ACTIVE_MODEL_NAME = "CLAUDE_SONNET_4_6 (fallback)"
 
 print(f"\n  Active model : {ACTIVE_MODEL_NAME}")
 print(f"{'='*55}")
