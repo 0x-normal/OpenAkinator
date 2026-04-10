@@ -2,7 +2,7 @@
 Akinator Game — Powered by OpenGradient SDK
 """
 import time
-import os, json, threading
+import os, json, threading, asyncio
 
 # Load .env file locally if present (ignored on Railway/Render where env vars are set directly)
 try:
@@ -63,16 +63,13 @@ print(f"  Wallet         : {WALLET}")
 print(f"  OPG balance    : {get_opg_balance()}")
 
 # Init client (uses default llm.opengradient.ai endpoint)
-client = og.Client(private_key=PRIVATE_KEY)
+client = og.LLM(private_key=PRIVATE_KEY)
 
-# ensure_opg_approval (available in 0.7.1+)
+# ensure_opg_approval
 print(f"\n  Running ensure_opg_approval...")
 try:
-    approval = run_in_thread(lambda: client.llm.ensure_opg_approval(opg_amount=5.0))
-    print(f"  Before : {approval.allowance_before/1e18:.4f} OPG")
-    print(f"  After  : {approval.allowance_after/1e18:.4f} OPG")
-    print(f"  Tx     : {approval.tx_hash or 'none (already approved)'}")
-    print(f"  ✓ Permit2 approved")
+    approval = run_in_thread(lambda: client.ensure_opg_approval(min_allowance=5.0))
+    print(f"  OPG approval : {approval.allowance_after/1e18:.4f} OPG ✓")
 except AttributeError:
     print(f"  ✗ ensure_opg_approval not found — run: pip install opengradient --upgrade")
 except Exception as e:
@@ -80,23 +77,24 @@ except Exception as e:
 
 # Test models
 MODEL_PRIORITY = [
-    ("CLAUDE_3_5_HAIKU", og.TEE_LLM.CLAUDE_3_5_HAIKU),
-    ("GPT_4O",           og.TEE_LLM.GPT_4O),
-    ("GEMINI_2_0_FLASH", og.TEE_LLM.GEMINI_2_0_FLASH),
-    ("GROK_3_MINI_BETA", og.TEE_LLM.GROK_3_MINI_BETA),
+    ("CLAUDE_SONNET_4_6", og.TEE_LLM.CLAUDE_SONNET_4_6),
+    ("CLAUDE_3_5_HAIKU",  og.TEE_LLM.CLAUDE_3_5_HAIKU),
+    ("GPT_4O",            og.TEE_LLM.GPT_4O),
+    ("GEMINI_2_0_FLASH",  og.TEE_LLM.GEMINI_2_0_FLASH),
+    ("GROK_3_MINI_BETA",  og.TEE_LLM.GROK_3_MINI_BETA),
 ]
 ACTIVE_MODEL = ACTIVE_MODEL_NAME = None
 print(f"\n  Testing models...")
 for name, model in MODEL_PRIORITY:
     print(f"  {name}... ", end="", flush=True)
     try:
-        r = run_in_thread(lambda m=model: client.llm.chat(
+        r = run_in_thread(lambda m=model: asyncio.run(client.chat(
             model=m,
             messages=[{"role":"system","content":"Reply with one word: OK"},
                       {"role":"user","content":"Ready?"}],
             max_tokens=10, temperature=0,
             x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
-        ))
+        )))
         content = (r.chat_output or {}).get("content","")
         if content:
             print(f"✓  ({content.strip()[:20]})")
@@ -157,11 +155,11 @@ def ask():
     print(f"[OG] → {ACTIVE_MODEL_NAME} q#{question_num}")
     try:
         result = run_in_thread(lambda: llm_chat_with_retry(
-    lambda: client.llm.chat(
-            model=ACTIVE_MODEL, messages=messages,
-            max_tokens=300, temperature=0.3,
-            x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
-        )
+            lambda: asyncio.run(client.chat(
+                model=ACTIVE_MODEL, messages=messages,
+                max_tokens=300, temperature=0.3,
+                x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+            ))
         ))
         raw   = (result.chat_output or {}).get("content","") or ""
         phash = getattr(result,"payment_hash",None)
