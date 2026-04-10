@@ -54,66 +54,24 @@ def run_in_thread(fn, timeout=90):
     if error_box[0]: raise error_box[0]
     return result_box[0]
 
-# ── Startup ───────────────────────────────────────────────────────────────────
-print(f"\n{'='*55}")
-print(f"  Akinator Oracle — OpenGradient SDK")
-print(f"{'='*55}")
-print(f"  SDK version    : {og.__version__ if hasattr(og,'__version__') else 'unknown'}")
-print(f"  Wallet         : {WALLET}")
-print(f"  OPG balance    : {get_opg_balance()}")
-
-# Init client (uses default llm.opengradient.ai endpoint)
 client = og.LLM(private_key=PRIVATE_KEY)
 
-# ensure_opg_approval
-print(f"\n  Running ensure_opg_approval...")
+ACTIVE_MODEL      = og.TEE_LLM.CLAUDE_SONNET_4_6
+ACTIVE_MODEL_NAME = "CLAUDE_SONNET_4_6"
+
+print("\n" + "="*55)
+print("  Akinator Oracle — OpenGradient TEE")
+print("="*55)
+print(f"  Wallet      : {WALLET}")
+print(f"  OPG balance : {get_opg_balance()}")
 try:
     approval = run_in_thread(lambda: client.ensure_opg_approval(min_allowance=5.0))
-    print(f"  OPG approval : {approval.allowance_after/1e18:.4f} OPG ✓")
-except AttributeError:
-    print(f"  ✗ ensure_opg_approval not found — run: pip install opengradient --upgrade")
+    print(f"  OPG approval: {approval.allowance_after/1e18:.2f} OPG ✓")
 except Exception as e:
-    print(f"  ✗ Error: {e}")
-
-# Test models
-MODEL_PRIORITY = [
-    ("CLAUDE_SONNET_4_6", og.TEE_LLM.CLAUDE_SONNET_4_6),
-    ("CLAUDE_HAIKU_4_5",  og.TEE_LLM.CLAUDE_HAIKU_4_5),
-    ("GPT_5",             og.TEE_LLM.GPT_5),
-    ("GEMINI_2_5_FLASH",  og.TEE_LLM.GEMINI_2_5_FLASH),
-    ("GROK_4",            og.TEE_LLM.GROK_4),
-]
-ACTIVE_MODEL = ACTIVE_MODEL_NAME = None
-print(f"\n  Testing models...")
-for name, model in MODEL_PRIORITY:
-    print(f"  {name}... ", end="", flush=True)
-    try:
-        r = run_in_thread(lambda m=model: asyncio.run(client.chat(
-            model=m,
-            messages=[{"role":"system","content":"Reply with one word: OK"},
-                      {"role":"user","content":"Ready?"}],
-            max_tokens=10, temperature=0,
-            x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
-        )))
-        content = (r.chat_output or {}).get("content","")
-        if content:
-            print(f"✓  ({content.strip()[:20]})")
-            ACTIVE_MODEL = model
-            ACTIVE_MODEL_NAME = name
-            break
-        else:
-            print(f"✗  empty response")
-    except Exception as e:
-        print(f"✗  {str(e)[:80]}")
-
-if not ACTIVE_MODEL:
-    ACTIVE_MODEL = og.TEE_LLM.CLAUDE_SONNET_4_6
-    ACTIVE_MODEL_NAME = "CLAUDE_SONNET_4_6 (fallback)"
-
-print(f"\n  Active model : {ACTIVE_MODEL_NAME}")
-print(f"{'='*55}")
-print(f"  Open: http://localhost:5000")
-print(f"{'='*55}\n")
+    print(f"  OPG warning : {e}")
+print("="*55)
+print("  Open: http://localhost:5000")
+print("="*55 + "\n")
 
 SYSTEM_PROMPT = """You are an Akinator-style oracle AI. The player is thinking of a {category}.
 Ask clever yes/no questions to deduce what they're thinking of, then guess.
@@ -156,8 +114,10 @@ def ask():
     try:
         result = run_in_thread(lambda: llm_chat_with_retry(
             lambda: asyncio.run(client.chat(
-                model=ACTIVE_MODEL, messages=messages,
-                max_tokens=300, temperature=0.3,
+                model=ACTIVE_MODEL,
+                messages=messages,
+                max_tokens=300,
+                temperature=0.3,
                 x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
             ))
         ))
@@ -189,7 +149,7 @@ def llm_chat_with_retry(fn, retries=3, delay=1.5):
             msg = str(e)
 
             # Only retry for this specific error (optional but cleaner)
-            if "TEE LLM chat request failed" in msg or "Invalid response" in msg or "500" in msg or "Server error" in msg:
+            if "TEE LLM chat request failed" in msg or "Invalid response" in msg:
                 print(f"[Retry {attempt+1}/{retries}] LLM error: {msg}")
                 time.sleep(delay * (attempt + 1))  # exponential-ish backoff
                 continue
