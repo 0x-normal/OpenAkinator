@@ -95,7 +95,7 @@ for name, model in MODEL_PRIORITY:
             messages=[{"role":"system","content":"Reply with one word: OK"},
                       {"role":"user","content":"Ready?"}],
             max_tokens=10, temperature=0,
-            x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
+            x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
         ))
         content = (r.chat_output or {}).get("content","")
         if content:
@@ -160,7 +160,7 @@ def ask():
     lambda: client.llm.chat(
             model=ACTIVE_MODEL, messages=messages,
             max_tokens=300, temperature=0.3,
-            x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
+            x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
         )
         ))
         raw   = (result.chat_output or {}).get("content","") or ""
