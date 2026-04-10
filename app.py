@@ -149,7 +149,7 @@ def llm_chat_with_retry(fn, retries=3, delay=1.5):
             msg = str(e)
 
             # Only retry for this specific error (optional but cleaner)
-            if "TEE LLM chat request failed" in msg or "Invalid response" in msg:
+            if "TEE LLM chat" in msg or "Invalid response" in msg or "500" in msg:
                 print(f"[Retry {attempt+1}/{retries}] LLM error: {msg}")
                 time.sleep(delay * (attempt + 1))  # exponential-ish backoff
                 continue
